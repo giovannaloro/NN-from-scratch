@@ -21,7 +21,7 @@ def copy_matrix_array(input_matrix_array, zero=False):
         for y in range(len(input_matrix_array[x])): 
             for z in range(len(input_matrix_array[x][y])):
                 print(x,y,z)
-                output_matrix_array[x][y][z].append(0)
+                output_matrix_array[x][y].append(0)
     return output_matrix_array
 
 def print_matrix(matrix):
