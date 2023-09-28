@@ -1,6 +1,7 @@
 from http.client import LENGTH_REQUIRED
 from re import I, X
 import numpy as np 
+import random
 
 
 
@@ -12,8 +13,13 @@ def sigmoid(n):
 
 def s_mod(v,i,j,k,matrix):
     exval = matrix[i][j][k]
-    matrix[i][j][k] = exval - v   
+    matrix[i][j][k] = exval + v   
     return matrix
+
+def b_mod(v,i,j,matrix):
+    exval = matrix[i][j]
+    matrix[i][j] = exval + v
+    return matrix 
 
 def copy_matrix_array(input_matrix_array, zero=False):
     output_matrix_array = []
@@ -27,9 +33,19 @@ def copy_matrix_array(input_matrix_array, zero=False):
     for x in range(len(input_matrix_array)):
         for y in range(len(input_matrix_array[x])): 
             for z in range(len(input_matrix_array[x][y])):
-                print(x,y,z)
                 output_matrix_array[x][y].append(0)
     return output_matrix_array
+
+def copy_matrix_biases(input_biases_array, zero=False):
+    output_biases_array = []
+    for x in range(len(input_biases_array)):
+        row = []
+        output_biases_array.append(row)
+    for x in range(len(input_biases_array)):
+        for y in range(len(input_biases_array[x])):
+            output_biases_array[x].append(0)
+    return output_biases_array
+    
 
 def print_matrix(matrix):
         for q in range(len(matrix)):
@@ -63,7 +79,12 @@ class NN :
         for q in range(len(self.weights)):
             for w in range(len(self.weights[q])):
                 for e in range(len(self.weights[q][w])):
-                    self.weights[q][w][e] -= update_layers[q][w][e] 
+                    self.weights[q][w][e] += update_layers[q][w][e] 
+
+    def update_biases(self, update_biases):
+        for q in range(len(self.biases)):
+            for w in range(len(self.biases[q])):
+                self.biases[q][w] += update_biases[q][w]
 
     def print_layers(self):
         for q in range(len(self.weights)):
@@ -82,8 +103,13 @@ class NN :
 
     def w_mod(self,v,i,j,k):
         exval = self.weights[i][j][k]
-        self.weights[i][j][k] = v   
+        self.weights[i][j][k] += v   
         return exval
+    
+    def b_mod(self,v,i,j):
+        exval = self.biases[i][j]
+        self.biases[i][j] += v
+        return exval 
 
     def compute_forward(self,input):
         inner_input = input 
@@ -99,48 +125,54 @@ class NN :
      
     def error(self,input,output):
         error_root = np.subtract(self.compute_forward(input), output)
-        print(np.multiply(error_root, error_root))
         return np.multiply(error_root, error_root)
     
     def derivate(self,x,y,z,n,adjustment_matrix,input,output):
         h = 10**-8
-        learning_rate = 10**-5 
+        learning_rate = 0.1
         actual_error = self.error(input,output)
         self.w_mod(h,x,y,z)
         after_modify_error = self.error(input, output)
         self.w_mod(-h,x,y,z)
         derivate = (actual_error[n]-after_modify_error[n])/h
-        print("derivate",derivate*learning_rate)
         return s_mod(-derivate*learning_rate,x,y,z,adjustment_matrix)
     
+    def derivate_b(self,x,y,n,adjustment_biases,input,output):
+        h = 10**-8
+        learning_rate = 0.1
+        actual_error = self.error(input,output)
+        self.b_mod(h,x,y)
+        after_modify_error = self.error(input, output)
+        self.b_mod(-h,x,y)
+        derivate = (actual_error[n]-after_modify_error[n])/h
+        print(derivate*learning_rate)
+        return b_mod(-derivate*learning_rate,x,y,adjustment_biases)
 
         
-    def backpropagate(self,error_goal,dataset): #[[input, output]]
+    def backpropagate(self,dataset_): #[[input, output]]
+        dataset = dataset_
+        random.shuffle(dataset)
+        dataset = [dataset[i:i + 10] for i in range(0, len(dataset), 10)]
         original_weights = self.weights
         original_biases = self.biases
+        adjustment_biases = copy_matrix_biases(self.biases)
         adjustment_weights = copy_matrix_array(self.weights)
-        #then add bias too
         for e in range(len(dataset)):
-            for n in range(len(self.weights[len(self.weights)-1][0])):
-                print("n")
-                for x in range(len(self.weights)):
-                    for y in range(len(self.weights[x])):
-                        for z in range(len(self.weights[x][y])):
-                            print("weight",x,y,z)
-                            self.derivate(x,y,z,n,adjustment_weights,dataset[e][0],dataset[e][1])
-        print_matrix(adjustment_weights)
-        self.update_layers(adjustment_weights)
-
-
-        #per ogni vettore input output :
-            #per ogni neurone 
-                #per ogni peso e bias:
-                    #calcola derivata
-                        #calcola funzione errore attuale
-                        #calcola funzione errore facendo variare w/b di h 
-                        #ottieni la derivata come f(x) - f(x+h)/h
-                    #calcola il cambiamento peso/bias come  meno derivata per  learning rate 
-                    #somma cambiamento alla matrice di aggiornamento del layer 
-            #somma matrice aggiornamento pesi e bias 
+            for t in range(len(dataset[e])):
+                for n in range(len(self.weights[len(self.weights)-1][0])):
+                    for x in range(len(self.weights)):
+                        for y in range(len(self.weights[x])):
+                            for z in range(len(self.weights[x][y])):
+                                self.derivate(x,y,z,n,adjustment_weights,dataset[e][t][0],dataset[e][t][1])
+                for e in range(len(dataset)):
+                    for n in range(len(self.weights[len(self.weights)-1][0])):
+                        for x in range(len(self.biases)):
+                            for y in range(len(self.biases[x])):
+                                self.derivate_b(x,y,n,adjustment_biases,dataset[e][t][0],dataset[e][t][1])
+            self.update_layers(adjustment_weights)
+            self.update_biases(adjustment_biases)
+            adjustment_biases = copy_matrix_biases(self.biases)
+            adjustment_weights = copy_matrix_array(self.weights)
+ 
 
 
