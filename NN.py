@@ -129,23 +129,26 @@ class NN :
     
     def derivate(self,x,y,z,n,adjustment_matrix,input,output):
         h = 10**-8
-        learning_rate = 0.1
+        learning_rate = 1
         actual_error = self.error(input,output)
         self.w_mod(h,x,y,z)
         after_modify_error = self.error(input, output)
         self.w_mod(-h,x,y,z)
-        derivate = (actual_error[n]-after_modify_error[n])/h
+        derivate = (after_modify_error[n]-actual_error[n])/h
+        print("derivate weight")
+        print(derivate)
         return s_mod(-derivate*learning_rate,x,y,z,adjustment_matrix)
     
     def derivate_b(self,x,y,n,adjustment_biases,input,output):
         h = 10**-8
-        learning_rate = 0.1
+        learning_rate = 1
         actual_error = self.error(input,output)
         self.b_mod(h,x,y)
         after_modify_error = self.error(input, output)
         self.b_mod(-h,x,y)
         derivate = (actual_error[n]-after_modify_error[n])/h
-        print(derivate*learning_rate)
+        print("derivate bias")
+        print(derivate)
         return b_mod(-derivate*learning_rate,x,y,adjustment_biases)
 
         
@@ -164,11 +167,15 @@ class NN :
                         for y in range(len(self.weights[x])):
                             for z in range(len(self.weights[x][y])):
                                 self.derivate(x,y,z,n,adjustment_weights,dataset[e][t][0],dataset[e][t][1])
-                for e in range(len(dataset)):
+            for t in range(len(dataset[e])):
                     for n in range(len(self.weights[len(self.weights)-1][0])):
                         for x in range(len(self.biases)):
                             for y in range(len(self.biases[x])):
                                 self.derivate_b(x,y,n,adjustment_biases,dataset[e][t][0],dataset[e][t][1])
+            ex = self.weights
+            self.weights = adjustment_weights
+            self.print_layers()
+            self.weights = ex
             self.update_layers(adjustment_weights)
             self.update_biases(adjustment_biases)
             adjustment_biases = copy_matrix_biases(self.biases)
