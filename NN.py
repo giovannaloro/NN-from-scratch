@@ -2,6 +2,7 @@ from http.client import LENGTH_REQUIRED
 from re import I, X
 import numpy as np 
 import random
+import sys
 
 
 
@@ -9,7 +10,8 @@ def h_value():
     return 10**-8
 
 def sigmoid(n):
-    return 1/(1 + np.exp(-1*n))
+    n_ = np.float128(n)
+    return 1/(1 + np.exp(-1*n_))
 
 def s_mod(v,i,j,k,matrix):
     exval = matrix[i][j][k]
@@ -66,13 +68,13 @@ class NN :
             for y in range(self.layers_distribution[x]):
                 row = []
                 for z in range(self.layers_distribution[x+1]):
-                    row.append(np.random.rand(1)[0])
+                    row.append(random.uniform(-10,10))
                 matrix.append(row)
             self.weights.append(matrix)
         for x in range(1, len(self.layers_distribution)):
             biases_layer = []
             for y in range(self.layers_distribution[x]):
-                biases_layer.append(np.random.rand(1)[0])
+                biases_layer.append(random.uniform(-10,10))
             self.biases.append(biases_layer)
 
     def update_layers(self, update_layers):
@@ -129,33 +131,29 @@ class NN :
     
     def derivate(self,x,y,z,n,adjustment_matrix,input,output):
         h = 10**-8
-        learning_rate = 1
+        learning_rate = 0.7
         actual_error = self.error(input,output)
         self.w_mod(h,x,y,z)
         after_modify_error = self.error(input, output)
         self.w_mod(-h,x,y,z)
         derivate = (after_modify_error[n]-actual_error[n])/h
-        print("derivate weight")
-        print(derivate)
         return s_mod(-derivate*learning_rate,x,y,z,adjustment_matrix)
     
     def derivate_b(self,x,y,n,adjustment_biases,input,output):
         h = 10**-8
-        learning_rate = 1
+        learning_rate = 0.7
         actual_error = self.error(input,output)
         self.b_mod(h,x,y)
         after_modify_error = self.error(input, output)
         self.b_mod(-h,x,y)
         derivate = (actual_error[n]-after_modify_error[n])/h
-        print("derivate bias")
-        print(derivate)
         return b_mod(-derivate*learning_rate,x,y,adjustment_biases)
 
         
     def backpropagate(self,dataset_): #[[input, output]]
         dataset = dataset_
         random.shuffle(dataset)
-        dataset = [dataset[i:i + 10] for i in range(0, len(dataset), 10)]
+        dataset = [dataset[i:i + 3] for i in range(0, len(dataset), 3)]
         original_weights = self.weights
         original_biases = self.biases
         adjustment_biases = copy_matrix_biases(self.biases)
@@ -172,10 +170,6 @@ class NN :
                         for x in range(len(self.biases)):
                             for y in range(len(self.biases[x])):
                                 self.derivate_b(x,y,n,adjustment_biases,dataset[e][t][0],dataset[e][t][1])
-            ex = self.weights
-            self.weights = adjustment_weights
-            self.print_layers()
-            self.weights = ex
             self.update_layers(adjustment_weights)
             self.update_biases(adjustment_biases)
             adjustment_biases = copy_matrix_biases(self.biases)
