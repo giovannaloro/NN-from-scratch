@@ -1,179 +1,104 @@
-from http.client import LENGTH_REQUIRED
-from re import I, X
 import numpy as np 
 import random
-import sys
+import tools 
 
-
-
-def h_value():
-    return 10**-8
-
-def sigmoid(n):
-    n_ = np.float128(n)
-    return 1/(1 + np.exp(-1*n_))
-
-def s_mod(v,i,j,k,matrix):
-    exval = matrix[i][j][k]
-    matrix[i][j][k] = exval + v   
-    return matrix
-
-def b_mod(v,i,j,matrix):
-    exval = matrix[i][j]
-    matrix[i][j] = exval + v
-    return matrix 
-
-def copy_matrix_array(input_matrix_array, zero=False):
-    output_matrix_array = []
-    for x in range(len(input_matrix_array)):
-        matrix = []
-        output_matrix_array.append(matrix)
-    for x in range(len(input_matrix_array)):
-        for y in range(len(input_matrix_array[x])):
-            row = []
-            output_matrix_array[x].append(row)
-    for x in range(len(input_matrix_array)):
-        for y in range(len(input_matrix_array[x])): 
-            for z in range(len(input_matrix_array[x][y])):
-                output_matrix_array[x][y].append(0)
-    return output_matrix_array
-
-def copy_matrix_biases(input_biases_array, zero=False):
-    output_biases_array = []
-    for x in range(len(input_biases_array)):
-        row = []
-        output_biases_array.append(row)
-    for x in range(len(input_biases_array)):
-        for y in range(len(input_biases_array[x])):
-            output_biases_array[x].append(0)
-    return output_biases_array
-    
-
-def print_matrix(matrix):
-        for q in range(len(matrix)):
-            for w in range(len(matrix[q])):
-                    print(matrix[q][w],end="")
-            print(" ")
-        print("\n")
-
-    
-
-class NN :
-    def __init__(self,layers_distribution):
-        self.layers_distribution = layers_distribution
-        self.weights = []
-        self.biases = []
-        for x in range(len(self.layers_distribution)-1):
-            matrix = []
-            for y in range(self.layers_distribution[x]):
-                row = []
-                for z in range(self.layers_distribution[x+1]):
-                    row.append(random.uniform(-10,10))
-                matrix.append(row)
-            self.weights.append(matrix)
-        for x in range(1, len(self.layers_distribution)):
-            biases_layer = []
-            for y in range(self.layers_distribution[x]):
-                biases_layer.append(random.uniform(-10,10))
-            self.biases.append(biases_layer)
-
-    def update_layers(self, update_layers):
-        for q in range(len(self.weights)):
-            for w in range(len(self.weights[q])):
-                for e in range(len(self.weights[q][w])):
-                    self.weights[q][w][e] += update_layers[q][w][e] 
-
-    def update_biases(self, update_biases):
-        for q in range(len(self.biases)):
-            for w in range(len(self.biases[q])):
-                self.biases[q][w] += update_biases[q][w]
-
-    def print_layers(self):
-        for q in range(len(self.weights)):
-            for w in range(len(self.weights[q])):
-                for e in range(len(self.weights[q][w])):
-                    print(self.weights[q][w][e],end="")
-                print(" ")
-            print("\n")
-
-    def print_biases(self):
-        for x in range(len(self.biases)):
-            for y in range(len(self.biases[x])):
-                print(self.biases[x][y], end = "")
-                print(" ", end= "")
-            print("")        
-
-    def w_mod(self,v,i,j,k):
-        exval = self.weights[i][j][k]
-        self.weights[i][j][k] += v   
-        return exval
-    
-    def b_mod(self,v,i,j):
-        exval = self.biases[i][j]
-        self.biases[i][j] += v
-        return exval 
-
-    def compute_forward(self,input):
-        inner_input = input 
-        for i in range(len(self.weights)):
-            output = []
-            for j in range(len(self.weights[i][0])):
-                element = 0
-                for k in range(len(self.weights[i])):
-                    element += inner_input[k]*self.weights[i][k][j]
-                output.append(sigmoid(element - self.biases[i][j]))
-            inner_input = output 
-        return output
+class Network :
+    def __init__(self,architecture,weight_lower_bound,weight_upper_bound):
+        """This class represents the neural network
+        Parameters:
+        -weight_lower_bound: The minimum value a random weight can assume
+        -weight_upper_bound: The maximum value a random weight can assume
+        """
+        self.architecture = architecture 
+        "An array containing the number of neurons for each layer"
+        self.weights = tools.init_weights(self.architecture,weight_lower_bound,weight_upper_bound)
+        "A matrix of matrices containing the weights of each layer to layer connection"
+        self.biases = tools.init_biases(self.architecture,weight_lower_bound,weight_upper_bound)
+        "An array of arrays containing the biases of each neuron"
+ 
+    def predict(self,input):
+        """Return the output of the neural network
+        Parameters:
+        -input : An array with as many elements as the neurons of the first layer
+        """
+        return tools.multilinear_multiplication(self.weights,self.biases,input)
      
     def error(self,input,output):
-        error_root = np.subtract(self.compute_forward(input), output)
+        """Return the output of the error function of the network to an expected output
+        Parameters:
+        -input: An array with as many elements as the neurons of the first layer
+        -output: An expected output as an array with as many elements as the neurons of the last layer
+        """
+        error_root = np.subtract(self.predict(input), output)
         return np.multiply(error_root, error_root)
     
-    def derivate(self,x,y,z,n,adjustment_matrix,input,output):
-        h = 10**-8
-        learning_rate = 0.7
+    def dw_prediction_error(self,i,j,k,n,input,output):
+        """Return the partial derivate for a given weight of the error function of the network to an expected output for a single neuron
+        Parameters:
+        -i,j,k: The index of the weight
+        -n: The index of the chose output neuron  
+        -input: An array with as many elements as the neurons of the first layer
+        -output: An expected output as an array with as many elements as the neurons of the last layer
+        """
         actual_error = self.error(input,output)
-        self.w_mod(h,x,y,z)
-        after_modify_error = self.error(input, output)
-        self.w_mod(-h,x,y,z)
-        derivate = (after_modify_error[n]-actual_error[n])/h
-        return s_mod(-derivate*learning_rate,x,y,z,adjustment_matrix)
+        self.weights = tools.modify_single_weight(self.weights,tools.h(),i,j,k) #increment the weight
+        after_increment_error = self.error(input, output)
+        self.weights = tools.modify_single_weight(self.weights,-tools.h(),i,j,k) #decrement the weight
+        err_dw = (after_increment_error[n]-actual_error[n])/tools.h() #partial derivation of the error function to the weight 
+        return err_dw
     
-    def derivate_b(self,x,y,n,adjustment_biases,input,output):
-        h = 10**-8
-        learning_rate = 0.7
+    def db_prediction_error(self,i,j,n,input,output):
+        """Return the partial derivate for a given bias of the error function of the network to an expected output for a single neuron
+        Parameters:
+        -i,j: The index of the bias
+        -n: The index of the chosen output neuron  
+        -input: An array with as many elements as the neurons of the first layer
+        -output: An expected output as an array with as many elements as the neurons of the last layer
+        """
         actual_error = self.error(input,output)
-        self.b_mod(h,x,y)
-        after_modify_error = self.error(input, output)
-        self.b_mod(-h,x,y)
-        derivate = (actual_error[n]-after_modify_error[n])/h
-        return b_mod(-derivate*learning_rate,x,y,adjustment_biases)
+        self.biases = tools.modify_single_bias(self.biases,tools.h(),i,j) #increment the bias
+        after_increment_error = self.error(input, output)
+        self.biases = tools.modify_single_bias(self.biases,-tools.h(),i,j) #decrement the bias
+        err_db = (after_increment_error[n]-actual_error[n])/tools.h() #partial derivation of the error function to the bias
+        return err_db
+    
 
-        
-    def backpropagate(self,dataset_): #[[input, output]]
-        dataset = dataset_
-        random.shuffle(dataset)
-        dataset = [dataset[i:i + 3] for i in range(0, len(dataset), 3)]
-        original_weights = self.weights
-        original_biases = self.biases
-        adjustment_biases = copy_matrix_biases(self.biases)
-        adjustment_weights = copy_matrix_array(self.weights)
-        for e in range(len(dataset)):
-            for t in range(len(dataset[e])):
+    def train(self,dataset,batch_size,learning_rate):
+        """This function train the network given a specific dataset
+        Parameters:
+        -dataset: An array of [input, output] arrays 
+        -batch_size: The size of the batch to perform the mini stochastic gradient descent as an integer
+        -learning_rate: The learning rate of the netweork during the training as a float  
+        """ 
+        training_dataset = tools.divide_dataset_in_batches(dataset,batch_size) #divide the dataset in batches
+        self.backpropagation(training_dataset,learning_rate) #perform the back propagation algorithm
+
+    def backpropagation(self,dataset,learning_rate):
+        """This function perform the backpropagation algorithm given a specific dataset
+        Parameters:
+        -dataset: An array of [input, output] arrays 
+        -learning_rate: The learning rate of the network during the training as a float  
+        """ 
+        minimization_biases = tools.init__zero_biases_copy(self.architecture) #generate a matrix of matrices of zeros to stock the derivate error (Dbias)
+        minimization_weights = tools.init_zero_weights_copy(self.architecture) #generate an array of arrays of zero to stock the derivate error (Dweight)
+        for b in range(len(dataset)):
+            for e in range(len(dataset[b])):
                 for n in range(len(self.weights[len(self.weights)-1][0])):
-                    for x in range(len(self.weights)):
-                        for y in range(len(self.weights[x])):
-                            for z in range(len(self.weights[x][y])):
-                                self.derivate(x,y,z,n,adjustment_weights,dataset[e][t][0],dataset[e][t][1])
-            for t in range(len(dataset[e])):
+                    for i in range(len(self.weights)):
+                        for j in range(len(self.weights[i])):
+                            for k in range(len(self.weights[i][j])):
+                                dw_error = self.dw_prediction_error(i,j,k,n,dataset[b][e][0],dataset[b][e][1])
+                                minimization_weights = tools.modify_single_weight(minimization_weights,-dw_error*learning_rate,i,j,k)
+            for e in range(len(dataset[b])):
                     for n in range(len(self.weights[len(self.weights)-1][0])):
-                        for x in range(len(self.biases)):
-                            for y in range(len(self.biases[x])):
-                                self.derivate_b(x,y,n,adjustment_biases,dataset[e][t][0],dataset[e][t][1])
-            self.update_layers(adjustment_weights)
-            self.update_biases(adjustment_biases)
-            adjustment_biases = copy_matrix_biases(self.biases)
-            adjustment_weights = copy_matrix_array(self.weights)
+                        for i in range(len(self.biases)):
+                            for j in range(len(self.biases[i])):
+                                db_error = self.db_prediction_error(i,j,n,dataset[b][e][0],dataset[b][e][1],)
+                                minimization_biases = tools.modify_single_bias(minimization_biases,-db_error*learning_rate,i,j)
+            self.weights = tools.update_weights(self.weights,minimization_weights) #update the weights
+            self.biases = tools.update_biases(self.biases,minimization_biases) #update the biases
+            minimization_biases = tools.init__zero_biases_copy(self.architecture) #generate a matrix of matrices of zeros to stock the derivate error (Dbias)
+            minimization_weights = tools.init_zero_weights_copy(self.architecture) #generate an array of arrays of zero to stock the derivate error (Dweight)
  
 
 

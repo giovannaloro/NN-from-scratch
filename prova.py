@@ -10,42 +10,15 @@ for x in range(1, 200):
 for x in range(1, 200):
     dataset.append([[x, -x], [0]])
 
-my_nn = NN.NN([2,5,3,8,1])
-#my_nn.print_layers()
-print ( " " )
-#my_nn.print_biases()
-print("pretraining")
-out = my_nn.compute_forward([1,1])
-print(out)
-my_nn.backpropagate(dataset)
-my_nn.backpropagate(dataset)
-my_nn.backpropagate(dataset)
-my_nn.backpropagate(dataset)
-print("aftertraining")
-print("should give 1")
-out = my_nn.compute_forward([1,1])
-print(out)
-print("should give zero")
-out = (my_nn.compute_forward([8,-8]))
-print(out)
+network = NN.Network([2,5,3,8,1],-10,10)
+network.train(dataset,1,0.7)
+print("should be 0: ", network.predict([30,-30]))
+print("should be 1:", network.predict([111,111]))
+
 while(True):
     x = int(input("x"))
     if (x == "no"):
         sys.exit()
     y = int(input("y"))
-    print(my_nn.compute_forward([x,y]))
-"""
-def ln(x,y):
-    return math.log(x**2+y,2.71828)
+    print(network.predict([x,y]))
 
-def lnx(x,y):
-    return  ((2*x)/(x**2+y))
-
-def approsimate_lnx(x,y):
-    h = 10**-8
-    return (ln(x+h,y)-ln(x,y))/h
-
-print(ln(2,3))
-print(lnx(2,3))
-print(approsimate_lnx(2,3))
-"""
